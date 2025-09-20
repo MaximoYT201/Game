@@ -2,11 +2,11 @@
 extends KinematicBody2D
 
 # Variables de movimiento
-var speed = 200
-var jump_speed = -400
-var gravity = 800
-var jump_limit = -100 
-var jump_cutoff_gravity = 1000 
+var speed = 150
+var jump_speed = -300
+var gravity = 700
+var jump_limit = -90
+var jump_cutoff_gravity = 900 
 var velocity = Vector2()
 var is_jumping = false
 
@@ -23,11 +23,11 @@ func _physics_process(delta):
 	if Input.is_action_pressed("ui_right"):
 		velocity.x = speed
 		# Voltear el personaje para que mire a la derecha
-		sprite.flip_h = false
+		sprite.flip_h = true
 	elif Input.is_action_pressed("ui_left"):
 		velocity.x = -speed
 		# Voltear el personaje para que mire a la izquierda
-		sprite.flip_h = true
+		sprite.flip_h = false
 		
 	# Lógica de salto (con altura variable)
 	if is_on_floor():
