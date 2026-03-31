@@ -1,66 +1,70 @@
-
 extends KinematicBody2D
 
-# Variables de movimiento
-var speed = 150
-var jump_speed = -300
-var gravity = 700
-var jump_limit = -90
-var jump_cutoff_gravity = 900 
+# --- Variables de movimiento ---
+export var speed = 150
+export var jump_speed = -300
+export var gravity = 700
+export var jump_limit = -90
+export var jump_cutoff_gravity = 900 
+
 var velocity = Vector2()
 var is_jumping = false
 
-# Nodo AnimationPlayer (asegúrate de que el nombre coincida con tu árbol de escenas)
+# --- Referencias a Nodos ---
 onready var anim_player = $AnimationPlayer
-onready var sprite = $Sprite # Añadimos una referencia a tu nodo Sprite
+onready var sprite = $Sprite 
 
 func _physics_process(delta):
-	
-	# Reiniciar velocidad horizontal
+	# 1. RESETEAR VELOCIDAD HORIZONTAL
 	velocity.x = 0
 	
-	# Movimiento horizontal (izquierda y derecha)
-	if Input.is_action_pressed("ui_right"):
+	# 2. DETECTAR ENTRADAS (Corregido para que la flecha arriba no falle)
+	var move_right = Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D)
+	var move_left = Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A)
+	
+	# Detectar si se acaba de presionar cualquiera para saltar
+	var jump_just_pressed = Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_SPACE)
+	
+	# Detectar si se mantiene presionada cualquiera para el salto largo
+	var holding_jump = Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_SPACE)
+
+	# 3. MOVIMIENTO HORIZONTAL (Animación Invertida)
+	if move_right:
 		velocity.x = speed
-		# Voltear el personaje para que mire a la derecha
-		sprite.flip_h = true
-	elif Input.is_action_pressed("ui_left"):
+		sprite.flip_h = true  # AHORA TRUE ES DERECHA (INVERTIDO)
+	elif move_left:
 		velocity.x = -speed
-		# Voltear el personaje para que mire a la izquierda
-		sprite.flip_h = false
+		sprite.flip_h = false # AHORA FALSE ES IZQUIERDA (INVERTIDO)
 		
-	# Lógica de salto (con altura variable)
+	# 4. LÓGICA DE SALTO
 	if is_on_floor():
 		is_jumping = false
-		if Input.is_action_just_pressed("ui_up"):
+		if jump_just_pressed:
 			velocity.y = jump_speed
 			is_jumping = true
 	else:
-		if is_jumping and Input.is_action_just_released("ui_up") and velocity.y < jump_limit:
+		# Si dejas de presionar la tecla antes de llegar al límite, el salto se corta
+		if is_jumping and not holding_jump and velocity.y < jump_limit:
 			velocity.y = jump_limit
 		
-	# Aplicar gravedad
-	if velocity.y < 0 and not Input.is_action_pressed("ui_up"):
+	# 5. APLICAR GRAVEDAD
+	if velocity.y < 0 and not holding_jump:
 		velocity.y += jump_cutoff_gravity * delta
 	else:
 		velocity.y += gravity * delta
 	
-	# Mover el personaje
-	velocity = move_and_slide(velocity, Vector2(0, -1))
+	# 6. EJECUTAR MOVIMIENTO
+	velocity = move_and_slide(velocity, Vector2.UP)
 	
-	# Llamar a la función de actualización de animación al final de la física
+	# 7. ACTUALIZAR ANIMACIONES
 	update_animation()
 
-# Función para controlar las animaciones
 func update_animation():
 	if is_on_floor():
-		if velocity.x == 0:
-			# Si está en el suelo y no se mueve
-			anim_player.play("Idle")
-		else:
-			# Si está en el suelo y se mueve
+		if abs(velocity.x) > 0.1:
 			anim_player.play("Walk")
+		else:
+			anim_player.play("Idle")
 	else:
-		# Si está en el aire (saltando o cayendo)
-		# Podrías agregar una animación de "salto" si la tienes
+		# Si tienes animación de salto, puedes ponerla aquí
 		pass
