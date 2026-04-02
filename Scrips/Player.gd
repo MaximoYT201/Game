@@ -1,70 +1,77 @@
 extends KinematicBody2D
 
-# --- Variables de movimiento ---
+# --- Variables de Movimiento ---
 export var speed = 150
-export var jump_speed = -300
-export var gravity = 700
-export var jump_limit = -90
-export var jump_cutoff_gravity = 900 
+export var jump_speed = -300     # Fuerza inicial del salto
+export var gravity = 700         # Gravedad normal (caída)
+export var jump_limit = -100     # Punto donde se corta el salto si sueltas
+export var jump_cutoff_gravity = 1100 # Gravedad fuerte al soltar botón
 
 var velocity = Vector2()
 var is_jumping = false
 
-# --- Referencias a Nodos ---
-onready var anim_player = $AnimationPlayer
-onready var sprite = $Sprite 
+# --- Referencias a Nodos (Asegúrate de que se llamen así) ---
+onready var animation_player = $AnimationPlayer
+onready var sprite_2d = $Sprite 
 
 func _physics_process(delta):
 	# 1. RESETEAR VELOCIDAD HORIZONTAL
-	velocity.x = 0
+	var move_dir = 0
 	
-	# 2. DETECTAR ENTRADAS (Corregido para que la flecha arriba no falle)
-	var move_right = Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D)
-	var move_left = Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A)
+	# 2. DETECTAR ENTRADAS (Soporta WASD y Flechas)
+	if Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D):
+		move_dir += 1
+	if Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A):
+		move_dir -= 1
 	
-	# Detectar si se acaba de presionar cualquiera para saltar
-	var jump_just_pressed = Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_SPACE)
-	
-	# Detectar si se mantiene presionada cualquiera para el salto largo
-	var holding_jump = Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_SPACE)
+	velocity.x = move_dir * speed
 
-	# 3. MOVIMIENTO HORIZONTAL (Animación Invertida)
-	if move_right:
-		velocity.x = speed
-		sprite.flip_h = true  # AHORA TRUE ES DERECHA (INVERTIDO)
-	elif move_left:
-		velocity.x = -speed
-		sprite.flip_h = false # AHORA FALSE ES IZQUIERDA (INVERTIDO)
-		
-	# 4. LÓGICA DE SALTO
+	# Detectar si se ACABA de presionar para saltar
+	var jump_just_pressed = Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)
+	# Detectar si se MANTIENE presionado para salto variable
+	var holding_jump = Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)
+
+	# 3. VOLTEAR EL SPRITE (FLIP)
+	if move_dir == 1:
+		sprite_2d.flip_h = false
+	elif move_dir == -1:
+		sprite_2d.flip_h = true
+
+	# 4. LÓGICA DE SALTO VARIABLE
 	if is_on_floor():
 		is_jumping = false
 		if jump_just_pressed:
 			velocity.y = jump_speed
 			is_jumping = true
 	else:
-		# Si dejas de presionar la tecla antes de llegar al límite, el salto se corta
+		# SI EL JUGADOR SUELTA EL BOTÓN EN EL AIRE:
+		# Cortamos el impulso hacia arriba aplicando el límite
 		if is_jumping and not holding_jump and velocity.y < jump_limit:
 			velocity.y = jump_limit
 		
-	# 5. APLICAR GRAVEDAD
-	if velocity.y < 0 and not holding_jump:
-		velocity.y += jump_cutoff_gravity * delta
-	else:
-		velocity.y += gravity * delta
+		# 5. APLICAR GRAVEDAD (Variable)
+		# Si vamos hacia arriba pero no estamos presionando saltar, caemos más rápido (salto corto)
+		if velocity.y < 0 and not holding_jump:
+			velocity.y += jump_cutoff_gravity * delta
+		else:
+			velocity.y += gravity * delta
 	
 	# 6. EJECUTAR MOVIMIENTO
 	velocity = move_and_slide(velocity, Vector2.UP)
 	
-	# 7. ACTUALIZAR ANIMACIONES
-	update_animation()
+	# 7. LLAMAR A LAS ANIMACIONES
+	actualizar_animaciones(move_dir)
 
-func update_animation():
+# --- Función de Animaciones (Unificada con Lógica del Video) ---
+func actualizar_animaciones(direccion):
 	if is_on_floor():
-		if abs(velocity.x) > 0.1:
-			anim_player.play("Walk")
+		if direccion == 0:
+			animation_player.play("Idle")
 		else:
-			anim_player.play("Idle")
+			animation_player.play("Walk") # O "Run", como lo hayas nombrado
 	else:
-		# Si tienes animación de salto, puedes ponerla aquí
-		pass
+		# Lógica de aire: Salto y Caída
+		if velocity.y < 0:
+			animation_player.play("Jump")
+		else:
+			animation_player.play("Fall")
